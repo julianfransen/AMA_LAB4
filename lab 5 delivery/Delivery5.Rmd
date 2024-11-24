@@ -34,7 +34,7 @@ and
 \]
 
 ```{r}
-# Here,
+# Here we changed the name to poisson
 h.cv.sm.poisson <- function(x,y,rg.h=NULL,l.h=10,method=loglik.CV){
    cv.h <- numeric(l.h)
    if (is.null(rg.h)){
@@ -50,7 +50,7 @@ h.cv.sm.poisson <- function(x,y,rg.h=NULL,l.h=10,method=loglik.CV){
    }
    return(list(h = gr.h, 
                cv.h = cv.h, 
-               h.cv = gr.h[which.min(cv.h)]))
+               h.cv = gr.h[which.max(cv.h)])) # Here we changed the min to max
 }
 
 loglik.CV <- function(x, y, h) {
@@ -59,13 +59,12 @@ loglik.CV <- function(x, y, h) {
     # Estimate lambda for the i-th observation
     lambda_i <- sm.poisson(x = x[-i], y = y[-i], h = h, eval.points = x[i], display = "none")$estimate
     # Compute log-likelihood for the i-th observation
-    log(dpois(y[i], lambda = lambda_i))
+    log(dpois(y[i], lambda = lambda_i)) # Use the dpois function to get the probabilites
   }))
 }
 ```
 
-In the code you can see that I copied the code for `h.cv.sm.poisson` completely from the `h.cv.sm.binomial` found in the lab. The only thing I changed is the name. However, the code for `loglik.CV` is changed significantly. I calculate the $\lambda_i$ based on the formulas, where I use the `sm.poisson` function to obtain the estimate. Then I use the mean, which is equivalent to the sum divided by n part of the formula. 
-
+In the code you can see that we copied the code for `h.cv.sm.poisson` completely from the `h.cv.sm.binomial` found in the lab. The only thing we changed, besides the name, is the `min` to`max` for `h.cv`, since we are trying to maximize the log likelihood, not minimize. However, the code for `loglik.CV` is changed significantly. We calculate the $\lambda_i$ based on the formulas, where we use the `sm.poisson` function to obtain the estimate. Then the mean is used, which is equivalent to the sum divided by n part of the formula. By using sapply, we make sure that for every value of h the function is applied for all $i \in n$. 
 
 # Local Poisson regression for Country Development Data
 
@@ -83,19 +82,32 @@ x <- countries$Life.expec
 y <- countries$le.fm.r
 ```
 
-For the range of h we use ...... Let's run and plot the results.
+For the range of h we intinally use h $\in [1, 10]$. This was partly based on theory and partly based on empirical analysis: the values of h should be dependent on the range of explanatory variable. This idea agrees with our experiment, because when we scale the data we see that the optimal value for h is different. First we show the results without scaling.
 
 ```{r}
-# using h.CV.loglik
+h_min <- 1; h_max <- 10
+par(mfrow=c(1,2))
+h.CV.loglik <- h.cv.sm.poisson(x,y,rg.h=c(h_min,h_max),method=loglik.CV)
+plot(h.CV.loglik$h,h.CV.loglik$cv.h)
+lines(h.CV.loglik$h,h.CV.loglik$cv.h)
 
-R <- range(x)[2] - range(x)[1]
-h_min <- R / 10
-h_max <- R / 2
+h_min <- 2.5; h_max <- 3.0
+h.CV.loglik <- h.cv.sm.poisson(x,y,rg.h=c(h_min,h_max),method=loglik.CV)
+plot(h.CV.loglik$h,h.CV.loglik$cv.h)
+lines(h.CV.loglik$h,h.CV.loglik$cv.h)
+h.CV.loglik$h.cv
+```
+
+On the first plot, we use h $\in [1, 10]$, and we see that $h^*$ lies somewhere around 3. So we run the algorithm again to be more accurate, which you can see in the second plot. We find that the optimal value for h is 2.71 with a loo-CV error of 2.03. 
+
+Now we show that scaling affects the $h^*$:
+```{r}
 x_scaled <- scale(x)
-
-
+h_min <- 0.1; h_max <- 0.6
 h.CV.loglik <- h.cv.sm.poisson(x_scaled,y,rg.h=c(h_min,h_max),method=loglik.CV)
 plot(h.CV.loglik$h,h.CV.loglik$cv.h)
 lines(h.CV.loglik$h,h.CV.loglik$cv.h)
+h.CV.loglik$h.cv
 ```
 
+After scaling, $h^* = 0.33$, which is approximately 10 times smaller than the solution found without scaling. 
