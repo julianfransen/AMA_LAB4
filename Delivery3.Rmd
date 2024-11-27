@@ -3,17 +3,17 @@ title: 'Delivery 3: AMA'
 author: "Marc Falcón Barau, Julian Fransen,Victor Garcia Pizarro"
 date: "2024-10-03"
 output:
-  html_document:
+  word_document:
     toc: true
     toc_depth: '3'
-    df_print: paged
   pdf_document:
     toc: true
     toc_depth: 3
     number_sections: false
-  word_document:
+  html_document:
     toc: true
     toc_depth: '3'
+    df_print: paged
 editor_options:
   chunk_output_type: console
 ---
@@ -75,7 +75,7 @@ stimated_residuals <- log(residuals^2)
 
 ```{r}
 optimal_h2a <- h.select(x = Yr, y = stimated_residuals, method="cv")
-model2a <- locpolreg(x = Yr, y = z_i, h = optimal_h2a, doing.plot=FALSE)
+model2a <- locpolreg(x = Yr, y = stimated_residuals, h = optimal_h2a, doing.plot=FALSE)
 ```
 
 ## 4. Estimate σ2(x)
