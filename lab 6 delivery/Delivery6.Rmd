@@ -1,0 +1,166 @@
+---
+title: 'Delivery 6: AMA'
+author: "Marc Falcón Barau, Julian Fransen,Victor Garcia Pizarro"
+date: "2024-10-03"
+output:
+  html_document:
+    toc: true
+    toc_depth: '3'
+    df_print: paged
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: false
+  word_document:
+    toc: true
+    toc_depth: '3'
+editor_options:
+  chunk_output_type: console
+---
+
+## Question 1
+
+### Consider the nonparametric regression of cnt as a function of instant. Estimate the regression function m(instant) of cnt as a function of instant using a cubic regression spline estimated with the R function smooth.splines and choosing the smoothing parameter by Generalized Cross Validation.
+
+We load the data and apply the smooth.spline function to find the smoothing parameters. We are asked to used the generalized cross validation, that is possible adjusting the cv value of the function to FALSE. We will also put the all.knots to FALSE to ensure that only a subset of x[] is used, specifically x[j] where the nknots indices are evenly spaced in 1:n.
+
+```{r}
+load("bikes.Washington.Rdata")
+
+spline_res <- smooth.spline(bikes$instant, bikes$cnt, cv = FALSE, all.knots = FALSE)
+
+```
+
+#### a) Which is the value of the chosen penalty parameter $\lambda$?
+
+```{r}
+lambda <- spline_res$lambda
+lambda
+
+```
+
+The value of $\lambda$ determined by the GCV to be the best is $1.005038e-07$.
+
+
+#### b) Which is the corresponding equivalent number of degrees of freedom df?
+
+```{r}
+df_spl <- spline_res$df
+df_spl
+
+```
+
+The df obtained by our model determined by the GCV is $93.34091$.
+
+#### c) How many knots have been used?
+
+```{r}
+knots_spl <- spline_res$fit$knot
+print(length(knots_spl))
+
+```
+
+The model has a total of $140$ knots.
+
+#### d) Give a graphic with the scatter plot and the estimated regression function m(instant).
+
+```{r}
+plot(bikes$instant, bikes$cnt, main = "Scatterplot and Estimated Regression Function (CV)",
+     xlab = "instant", ylab = "cnt", col = "skyblue")
+lines(spline_res, col = "red")
+
+```
+
+
+## Question 2
+
+### Define a new variable cnt.5000 taking the value 1 for days such that the number of total rental bikes is larger than or equal to 5000, on 0 otherwise.
+
+We as asked create a new binary variable that sets 1 when bike counts are higher or equal to 5000. We also load the function IRWLS that we are given on class.
+
+```{r}
+cnt.5000 <- rep(0, length(bikes$cnt))
+cnt.5000[which(bikes$cnt>=5000)] <- 1
+
+source("IRWLS_logistic_regression.R")
+
+```
+
+#### a) Use the function logistic.IRWLS.splines to fit the non-parametric binary regression cnt.5000 as a function of the temperature, using df=6. In which range of temperatures is Pr(cnt >= 5000|temp) larger than 0,5?
+
+```{r}
+spline.irwls <- logistic.IRWLS.splines(bikes$temp, cnt.5000, df=6)
+
+plot(bikes$temp, cnt.5000)
+lines(bikes$temp, spline.irwls$fitted.values, col=3)
+
+temp.int.start <- min(bikes$temp[which(spline.irwls$fitted.values>0.5)])
+temp.int.start
+
+temp.int.end <- max(bikes$temp[which(spline.irwls$fitted.values>0.5)])
+temp.int.end
+
+abline(h=0.5, col=2)
+abline(v=temp.int.start, col=4)
+abline(v=temp.int.end, col=4)
+
+```
+
+The data points are plotted, along with the fitted values from the regression, and the thresholds of 50\% probability are hihglighted with vertical and horizontal lines.
+
+#### b) Choose the parameter df by k-fold log-likelihood cross validation with k = 5 and using df.v = 3:15 as the set of possible values for df.
+
+We divide the dataset into 5 folds, using 4 folds for training and the remaining fold for validation in each iteration. The validation scores from all iterations are aggregated to calculate the final log-likelihood. This process is repeated for every candidate parameter, and the parameter yielding the highest log-likelihood is selected.
+
+```{r}
+#install.packages("caret")
+require(caret)
+
+flds <- createFolds(cnt.5000, k = 5, list = TRUE)
+df.v = 3:15
+
+loglik.dfs <- c()
+for (df.proposal in df.v){
+  loglik.folds <- c()
+  for (i in (1:length(flds))){
+    spline.irwls.bike.ifold <-  logistic.IRWLS.splines(x=bikes$temp[-unlist(flds[i])],y=cnt.5000[-unlist(flds[i])],x.new=bikes$temp[unlist(flds[i])],df=df.proposal)
+    
+    # log_likelihood_binary = sum_i[(yi*log(p(xi)) + ((1-yi)*log(1-p(xi)))]
+    loglik_term1 <- cnt.5000[unlist(flds[i])]*log(spline.irwls.bike.ifold$predicted.values)
+    loglik_term2 <- (1-cnt.5000[unlist(flds[i])])*log(1-(spline.irwls.bike.ifold$predicted.values))
+    loglik.folds <- c(loglik.folds,sum(loglik_term1 + loglik_term2))
+  }
+  loglik.dfs <- c(loglik.dfs, sum(loglik.folds))
+}
+plot(df.v, loglik.dfs)
+abline(v=df.v[which.max(loglik.dfs)],col=4)
+
+```
+
+After plotting the restults we can see that the value is maximized for $df=7$.
+
+Using this optimal value of df, we can then fit againg the nonparametric regression and see the results like before.
+
+```{r}
+spline.irwls.df <- logistic.IRWLS.splines(bikes$temp, cnt.5000, df=7)
+
+plot(bikes$temp, cnt.5000)
+lines(bikes$temp, spline.irwls$fitted.values, col=3)
+
+temp.int.start <- min(bikes$temp[which(spline.irwls$fitted.values>0.5)])
+temp.int.start
+
+temp.int.end <- max(bikes$temp[which(spline.irwls$fitted.values>0.5)])
+temp.int.end
+
+abline(h=0.5, col=2)
+abline(v=temp.int.start, col=4)
+abline(v=temp.int.end, col=4)
+
+```
+
+
+
+
+
+
