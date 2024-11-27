@@ -88,8 +88,6 @@ estimated_variance <- exp(model2a$mtgr)
 Finally, we combine all the elements that we have estimated: residuals, mean, and variance. 
 
 ```{r}
-par(mfrow = c(1, 2))
-
 # Calculate and plot ϵ²ᵢ against xᵢ
 plot(Yr, residuals ^ 2, 
      xlab = "Yr", 
@@ -171,6 +169,17 @@ plot(Yr, residuals ^ 2,
      main = "sm.regression() and dpill()",
      col = "blue", 
      pch = 16)  # Set the same y-axis range for both
+
+legend("topleft", 
+       legend = c("ϵ²", "σ²(x)", 
+                  "m(x)", "95% CI"),
+       col = c("blue", "green", "red", "red"),
+       pch = c(16, NA, NA, NA),  # points are residuals
+       lty = c(NA, 1, 1, 2),     # Line type for other elements
+       lwd = c(NA, 2, 2, 2),     # Line width                
+       cex = 0.8,
+       xpd = TRUE
+)     
 
 # Superpose estimated σ²(x)
 lines(Yr, estimated_variance, col = "green", lwd = 2) 
