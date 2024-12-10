@@ -95,7 +95,7 @@ h_min <- 2.5; h_max <- 3.0
 h.CV.loglik <- h.cv.sm.poisson(x,y,rg.h=c(h_min,h_max),method=loglik.CV)
 plot(h.CV.loglik$h,h.CV.loglik$cv.h)
 lines(h.CV.loglik$h,h.CV.loglik$cv.h)
-h.CV.loglik$h.cv
+h_optimal <- h.CV.loglik$h.cv; h.CV.loglik$h.cv
 ```
 
 On the first plot, we use h $\in [1, 10]$, and we see that $h^*$ lies somewhere around 3. So we run the algorithm again to be more accurate, which you can see in the second plot. We find that the optimal value for h is 2.71 with a loo-CV error of 2.03. 
@@ -111,3 +111,16 @@ h.CV.loglik$h.cv
 ```
 
 After scaling, $h^* = 0.33$, which is approximately 10 times smaller than the solution found without scaling. 
+
+
+
+```{r}
+h_optimal <- h.CV.loglik$h.cv
+# Here we fit the local Poisson regression model
+local_poisson_fit <- sm.poisson(x = x, y = y, h = h_optimal, display = "none")
+plot(x, y, pch = 16, xlab = "Life Expectancy", ylab = "Rounded Life Expectancy (le.fm.r)", col = "blue",
+     main = "Local Poisson Regression Fit")
+lines(local_poisson_fit$eval.points, local_poisson_fit$estimate, col = "red", lwd = 2)
+```
+
+Above you can see the fitted Poisson model in blue and the data points in red. Even though the plotted line is continuous, a Poisson only predicts counts, i.e. integer numbers. 
